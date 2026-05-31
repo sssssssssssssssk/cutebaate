@@ -48,14 +48,15 @@ const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onRepor
               </div>
               <ul className="space-y-3 mb-8 text-sm">
                 <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>E2E Encryption (AES-256)</span></li>
-                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>5MB file uploads</span></li>
+                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>P2P Voice & Video Calls (Free!)</span></li>
+                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Screenshot Detection & Alerts</span></li>
+                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>WhatsApp Message Deletion</span></li>
+                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Anonymous Group Polls</span></li>
+                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Group Roles & Admin Invites</span></li>
+                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>5MB drag-and-drop uploads</span></li>
                 <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>1 hour sessions</span></li>
-                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Text, stickers & reactions</span></li>
-                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Voice messages</span></li>
-                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Reply, edit, pin, delete</span></li>
-                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Self-destruct messages</span></li>
-                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Typing indicators & read receipts</span></li>
-                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Message search & formatting</span></li>
+                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Swipe to Reply & Heart Reactions</span></li>
+                <li className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><span>✓</span><span>Voice notes & formatting</span></li>
                 <li className="flex items-center space-x-2 text-gray-500"><span>✗</span><span>Contains ads</span></li>
               </ul>
               {tier === 'free' ? (
@@ -87,7 +88,7 @@ const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onRepor
                 <li className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold"><span>✨</span><span>Priority connection speed</span></li>
                 <li className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold"><span>✨</span><span>Session history (7 days encrypted)</span></li>
                 <li className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold"><span>✨</span><span>Custom themes & wallpapers</span></li>
-                <li className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold"><span>✨</span><span>Voice & video calls (E2E)</span></li>
+                <li className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold"><span>✨</span><span>Gift Premium to chat partners</span></li>
               </ul>
               {tier === 'premium' ? (
                 <div className="text-center text-purple-600 font-bold py-3 border-2 border-purple-500 rounded-xl">✨ Active</div>
@@ -143,26 +144,28 @@ const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onRepor
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {[
                     ['E2E Encryption', '✓', '✓', '✓'],
-                    ['Message Reactions', '✓', '✓', '✓'],
-                    ['Reply / Quote', '✓', '✓', '✓'],
+                    ['P2P Voice & Video Calls', '✓', '✓', '✓'],
+                    ['Screenshot Alerts', '✓', '✓', '✓'],
+                    ['WhatsApp Date Dividers', '✓', '✓', '✓'],
+                    ['WhatsApp Message Deletion', '✓', '✓', '✓'],
+                    ['Anonymous Group Polls', '✓', '✓', '✓'],
+                    ['Multi-Admin & Moderator Roles', '✓', '✓', '✓'],
+                    ['Gift Premium & Confetti', '✓', '✓', '✓'],
+                    ['Swipe to Reply & Haptics', '✓', '✓', '✓'],
+                    ['Double-Tap Heart React', '✓', '✓', '✓'],
+                    ['Camera & Photo Transfer', '✓', '✓', '✓'],
+                    ['Emojis & Message Pinning', '✓', '✓', '✓'],
                     ['Edit Messages (5 min)', '✓', '✓', '✓'],
-                    ['Delete for Everyone', '✓', '✓', '✓'],
-                    ['Pin Messages', '✓', '✓', '✓'],
-                    ['Typing Indicators', '✓', '✓', '✓'],
-                    ['Read Receipts', '✓', '✓', '✓'],
-                    ['Voice Messages', '✓', '✓', '✓'],
-                    ['Message Search', '✓', '✓', '✓'],
-                    ['Bold / Italic / Code', '✓', '✓', '✓'],
+                    ['Typing Indicators & Receipts', '✓', '✓', '✓'],
+                    ['Voice Messages & formatting', '✓', '✓', '✓'],
                     ['Self-Destruct Messages', '✓', '✓', '✓'],
-                    ['Stickers & GIFs', '✓', '✓', '✓'],
                     ['Max File Size', '5MB', '50MB', '500MB'],
                     ['Session Duration', '1 hour', '24 hours', '1 week'],
                     ['Ad-Free', '✗', '✓', '✓'],
-                    ['Custom Themes', '✗', '✓', '✓'],
+                    ['Custom Wallpapers & Themes', '✗', '✓', '✓'],
                     ['Custom Session URLs', '✗', '✓', '✓'],
                     ['Priority Speed', '✗', '✓', '✓'],
                     ['Session History', '✗', '7 days', '7 days'],
-                    ['Voice / Video Calls', '✗', '✓', '✓'],
                     ['Screen Sharing', '✗', '✗', '✓'],
                   ].map(([feature, free, premium, enterprise], i) => (
                     <tr key={i} className="hover:bg-gray-100 dark:hover:bg-gray-600">

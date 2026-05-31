@@ -33,8 +33,8 @@ const Home: React.FC<HomeProps> = ({ onTermsClick, onPrivacyClick, onReportClick
             </p>
             
             {/* Features */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-              <div className="bg-white rounded-xl p-6 shadow-lg">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -44,24 +44,75 @@ const Home: React.FC<HomeProps> = ({ onTermsClick, onPrivacyClick, onReportClick
                 <p className="text-sm text-gray-600">Your messages are encrypted and only you and your chat partner can read them</p>
               </div>
               
-              <div className="bg-white rounded-xl p-6 shadow-lg">
+              <div className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 </div>
                 <h3 className="font-semibold text-gray-800 mb-2">No Data Stored</h3>
-                <p className="text-sm text-gray-600">Zero logs, zero tracking. Messages exist only during your session</p>
+                <p className="text-sm text-gray-600">Zero logs, zero tracking. Messages exist only in memory during your active session</p>
               </div>
               
-              <div className="bg-white rounded-xl p-6 shadow-lg">
+              <div className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
                 <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
                 </div>
                 <h3 className="font-semibold text-gray-800 mb-2">Truly Anonymous</h3>
-                <p className="text-sm text-gray-600">No registration, no phone number, no email required</p>
+                <p className="text-sm text-gray-600">No registration, no phone number, no email required. Instantly join and chat</p>
+              </div>
+            </div>
+
+            {/* Interactive Feature Highlights */}
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-xl mb-12 text-left">
+              <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+                ✨ Powered by Next-Gen Interactive Features
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-700">
+                <div className="flex items-start space-x-3">
+                  <span className="text-xl">📞</span>
+                  <div>
+                    <h4 className="font-bold text-gray-800">Free P2P Voice & Video Calls</h4>
+                    <p className="text-gray-600">Crystal-clear WebRTC audio & video calling direct between browsers, with no intermediate servers.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <span className="text-xl">📸</span>
+                  <div>
+                    <h4 className="font-bold text-gray-800">Screenshot Alerts</h4>
+                    <p className="text-gray-600">Get instantly notified if the other user takes a screenshot of the conversation.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <span className="text-xl">🗳️</span>
+                  <div>
+                    <h4 className="font-bold text-gray-800">Anonymous Group Polls</h4>
+                    <p className="text-gray-600">Create interactive, decentralized, real-time polls to vote on group decisions anonymously.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <span className="text-xl">🛡️</span>
+                  <div>
+                    <h4 className="font-bold text-gray-800">Multi-Admin & Moderator Roles</h4>
+                    <p className="text-gray-600">Define precise roles (Admin, Moderator, Member) to mute, kick, ban, or control file sharing permissions.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <span className="text-xl">↩️</span>
+                  <div>
+                    <h4 className="font-bold text-gray-800">Swipe to Reply & Emojis</h4>
+                    <p className="text-gray-600">Slide messages right with haptics to quote-reply, and double-tap to react instantly with love hearts.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <span className="text-xl">🗑️</span>
+                  <div>
+                    <h4 className="font-bold text-gray-800">WhatsApp Message Deletion</h4>
+                    <p className="text-gray-600">"Delete for Everyone" or "Delete for Me" with native warning markers to fully control your footprint.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

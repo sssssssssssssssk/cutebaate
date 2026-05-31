@@ -95,6 +95,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
 
   // Poll state
   const [showPollCreator, setShowPollCreator] = useState(false);
+  const [showMenuDropdown, setShowMenuDropdown] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1228,178 +1229,201 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
           </div>
 
           {/* Controls / Personalization */}
-          <div className="flex items-center space-x-2">
-            {/* Voice & Video Call Buttons (Free Tier) */}
-            {isConnected && !isGroup && (
+          <div className="flex items-center space-x-2 relative">
+            
+            {/* 3-Dots Dropdown Trigger */}
+            <button
+              onClick={() => setShowMenuDropdown(!showMenuDropdown)}
+              className={`p-2 rounded-full text-gray-700 dark:text-gray-300 text-xl font-bold cursor-pointer transition-all active:scale-95 w-10 h-10 flex items-center justify-center ${showMenuDropdown ? 'bg-purple-500/10 dark:bg-purple-400/10 text-purple-600 dark:text-purple-400' : 'hover:bg-gray-200/50 dark:hover:bg-gray-750/50'}`}
+              title="Menu Options"
+            >
+              ⋮
+            </button>
+
+            {/* Menu Dropdown Menu */}
+            {showMenuDropdown && (
               <>
-                <button
-                  onClick={() => startCall('voice')}
-                  className="p-2 hover:bg-[#25d366]/20 hover:text-[#25d366] rounded-lg text-gray-700 dark:text-gray-300 cursor-pointer transition-all active:scale-95 text-lg"
-                  title="Voice Call"
-                >
-                  📞
-                </button>
-                <button
-                  onClick={() => startCall('video')}
-                  className="p-2 hover:bg-sky-500/20 hover:text-sky-500 rounded-lg text-gray-700 dark:text-gray-300 cursor-pointer transition-all active:scale-95 text-lg"
-                  title="Video Call"
-                >
-                  📹
-                </button>
-                <button
-                  onClick={() => setShowGiftModal(true)}
-                  className="p-2 bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 hover:scale-105 rounded-lg cursor-pointer transition-all active:scale-95 text-xs sm:text-sm font-bold flex items-center space-x-1 border border-purple-500/20"
-                  title="Gift Premium to Partner"
-                >
-                  <span>💎</span>
-                  <span>Gift</span>
-                </button>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMenuDropdown(false)} />
+                <div className="absolute right-2 top-12 w-56 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl shadow-2xl rounded-2xl p-2 z-50 border border-gray-150/40 dark:border-zinc-800/80 animate-scale-in">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold mb-1 px-3 uppercase tracking-wider">Chat Options</p>
+                  
+                  {isConnected && !isGroup && (
+                    <>
+                      <button
+                        onClick={() => { startCall('voice'); setShowMenuDropdown(false); }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                      >
+                        <span className="text-base">📞</span>
+                        <span>Voice Call</span>
+                      </button>
+                      <button
+                        onClick={() => { startCall('video'); setShowMenuDropdown(false); }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                      >
+                        <span className="text-base">📹</span>
+                        <span>Video Call</span>
+                      </button>
+                      <button
+                        onClick={() => { setShowGiftModal(true); setShowMenuDropdown(false); }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-purple-700 dark:text-purple-450 hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                      >
+                        <span className="text-base">💎</span>
+                        <span>Gift Premium</span>
+                      </button>
+                    </>
+                  )}
+
+                  {isGroup && isConnected && (
+                    <button
+                      onClick={() => { setShowGroupPanel(true); setShowMenuDropdown(false); }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/20 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                    >
+                      <span className="text-base">👥</span>
+                      <span>Group Info</span>
+                    </button>
+                  )}
+
+                  {/* Share Invite Link */}
+                  <button
+                    onClick={async () => {
+                      setShowMenuDropdown(false);
+                      let expiryHours = 0;
+                      if (isGroup) {
+                        const choice = window.prompt(
+                          "Set Group Invite Link Expiry:\n\n1 - 1 Hour\n2 - 24 Hours\n3 - Never\n\nEnter 1, 2, or 3 (Default: 3):", 
+                          "3"
+                        );
+                        if (choice === '1') expiryHours = 1;
+                        else if (choice === '2') expiryHours = 24;
+                      }
+                      const expiryTimestamp = expiryHours > 0 ? Date.now() + expiryHours * 60 * 60 * 1000 : 0;
+
+                      const payload = btoa(JSON.stringify({ 
+                        sessionId: session.sessionId, 
+                        password: session.password, 
+                        isGroup,
+                        expiresAt: expiryTimestamp
+                      }));
+                      const link = `${window.location.origin}/join/${payload}`;
+                      
+                      if (navigator.share) {
+                        try {
+                          await navigator.share({
+                            title: isGroup ? 'Join my Secure Group Chat' : 'Join my Secure Chat',
+                            text: '🔒 I have invited you to a secure end-to-end encrypted chat on SecureChat!',
+                            url: link
+                          });
+                        } catch (err) {
+                          console.log('Share canceled or failed', err);
+                        }
+                      } else {
+                        navigator.clipboard.writeText(link);
+                        alert('Invite link copied to clipboard!');
+                      }
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                  >
+                    <span className="text-base">🔗</span>
+                    <span>Invite Link</span>
+                  </button>
+
+                  {/* Nickname Trigger */}
+                  <button
+                    onClick={() => { setShowNicknameDialog(true); setShowMenuDropdown(false); }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                  >
+                    <span className="text-base">🏷️</span>
+                    <span>Set Nickname</span>
+                  </button>
+
+                  {/* Avatar Selector Toggle */}
+                  <button
+                    onClick={() => { setShowAvatarPicker(true); setShowWallpaperPicker(false); setShowMenuDropdown(false); }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                  >
+                    <span className="text-base">{customAvatar}</span>
+                    <span>Change Avatar</span>
+                  </button>
+
+                  {/* Wallpaper Selector Toggle */}
+                  <button
+                    onClick={() => { setShowWallpaperPicker(true); setShowAvatarPicker(false); setShowMenuDropdown(false); }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                  >
+                    <span className="text-base">🎨</span>
+                    <span>Chat Wallpaper</span>
+                  </button>
+
+                  <div className="border-t border-gray-150/40 dark:border-zinc-800/60 my-1"></div>
+
+                  {/* Report */}
+                  <button
+                    onClick={() => { setShowReport(true); setShowMenuDropdown(false); }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-yellow-600 dark:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-950/20 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                  >
+                    <span className="text-base">⚠️</span>
+                    <span>Report Chat</span>
+                  </button>
+
+                  {/* Exit */}
+                  <button
+                    onClick={() => { handleExit(); setShowMenuDropdown(false); }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                  >
+                    <span className="text-base">🚪</span>
+                    <span>Exit Session</span>
+                  </button>
+                </div>
               </>
             )}
 
-            {isGroup && isConnected && (
-              <button
-                onClick={() => setShowGroupPanel(true)}
-                className="p-2 bg-teal-500/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 hover:bg-teal-500/20 hover:scale-105 rounded-lg cursor-pointer transition-all active:scale-95 text-xs sm:text-sm font-bold flex items-center space-x-1 border border-teal-500/20"
-                title="Group Management & Details"
-              >
-                <span>👥</span>
-                <span>Group Info</span>
-              </button>
+            {/* Avatar Selector Popup Panel */}
+            {showAvatarPicker && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowAvatarPicker(false)} />
+                <div className="absolute right-2 top-12 bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-3 z-50 border border-gray-200 dark:border-gray-700 animate-scale-in">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold mb-2 px-1">Choose Avatar</p>
+                  <div className="flex flex-wrap gap-1 w-48">
+                    {avatarsList.map(a => (
+                      <button
+                        key={a}
+                        onClick={() => { setCustomAvatar(a); setShowAvatarPicker(false); }}
+                        className={`text-2xl p-2 rounded-lg transition-all ${customAvatar === a ? 'bg-purple-500 scale-110' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                      >
+                        {a}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
 
-            {/* Copy & Share Invite Link */}
-            <button
-              onClick={async () => {
-                let expiryHours = 0;
-                if (isGroup) {
-                  const choice = window.prompt(
-                    "Set Group Invite Link Expiry:\n\n1 - 1 Hour\n2 - 24 Hours\n3 - Never\n\nEnter 1, 2, or 3 (Default: 3):", 
-                    "3"
-                  );
-                  if (choice === '1') expiryHours = 1;
-                  else if (choice === '2') expiryHours = 24;
-                }
-                const expiryTimestamp = expiryHours > 0 ? Date.now() + expiryHours * 60 * 60 * 1000 : 0;
-
-                const payload = btoa(JSON.stringify({ 
-                  sessionId: session.sessionId, 
-                  password: session.password, 
-                  isGroup,
-                  expiresAt: expiryTimestamp
-                }));
-                const link = `${window.location.origin}/join/${payload}`;
-                
-                if (navigator.share) {
-                  try {
-                    await navigator.share({
-                      title: isGroup ? 'Join my Secure Group Chat' : 'Join my Secure Chat',
-                      text: '🔒 I have invited you to a secure end-to-end encrypted chat on SecureChat!',
-                      url: link
-                    });
-                  } catch (err) {
-                    console.log('Share canceled or failed', err);
-                  }
-                } else {
-                  navigator.clipboard.writeText(link);
-                  alert('Invite link copied to clipboard!');
-                }
-              }}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300 cursor-pointer transition-all active:scale-95"
-              title="Share Invite Link"
-            >
-              🔗
-            </button>
-
-            {/* Avatar Selector Toggle */}
-            <div className="relative">
-              <button
-                onClick={() => { setShowAvatarPicker(!showAvatarPicker); setShowWallpaperPicker(false); }}
-                className={`p-1.5 rounded-lg text-xl transition-colors ${showAvatarPicker ? 'bg-purple-500 ring-2 ring-purple-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                title="Change Avatar"
-              >
-                {customAvatar}
-              </button>
-              {showAvatarPicker && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowAvatarPicker(false)} />
-                  <div className="absolute right-0 mt-2 bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-3 z-50 border border-gray-200 dark:border-gray-700 animate-scale-in">
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold mb-2 px-1">Choose Avatar</p>
-                    <div className="flex flex-wrap gap-1 w-48">
-                      {avatarsList.map(a => (
-                        <button
-                          key={a}
-                          onClick={() => { setCustomAvatar(a); setShowAvatarPicker(false); }}
-                          className={`text-2xl p-2 rounded-lg transition-all ${customAvatar === a ? 'bg-purple-500 scale-110' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                        >
-                          {a}
-                        </button>
-                      ))}
-                    </div>
+            {/* Wallpaper Selector Popup Panel */}
+            {showWallpaperPicker && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowWallpaperPicker(false)} />
+                <div className="absolute right-2 top-12 bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-3 z-50 border border-gray-200 dark:border-gray-700 animate-scale-in w-40">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold mb-2 px-1">Chat Wallpaper</p>
+                  <div className="space-y-1">
+                    {Object.keys(wallpaperStyles).map(w => (
+                      <button
+                        key={w}
+                        onClick={() => { setChatWallpaper(w); setShowWallpaperPicker(false); }}
+                        className={`w-full text-xs text-left px-3 py-2 rounded-lg capitalize transition-all ${chatWallpaper === w ? 'bg-purple-500 text-white font-bold' : 'text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-gray-700'}`}
+                      >
+                        {w === 'default' && '🏠 '}
+                        {w === 'dark' && '🌙 '}
+                        {w === 'ocean' && '🌊 '}
+                        {w === 'sunset' && '🌅 '}
+                        {w === 'forest' && '🌲 '}
+                        {w}
+                      </button>
+                    ))}
                   </div>
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
 
-            {/* Wallpaper Selector Toggle */}
-            <div className="relative">
-              <button
-                onClick={() => { setShowWallpaperPicker(!showWallpaperPicker); setShowAvatarPicker(false); }}
-                className={`p-2 rounded-lg transition-colors ${showWallpaperPicker ? 'bg-purple-500 text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
-                title="Chat Wallpaper"
-              >
-                🎨
-              </button>
-              {showWallpaperPicker && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowWallpaperPicker(false)} />
-                  <div className="absolute right-0 mt-2 bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-3 z-50 border border-gray-200 dark:border-gray-700 animate-scale-in w-40">
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold mb-2 px-1">Chat Wallpaper</p>
-                    <div className="space-y-1">
-                      {Object.keys(wallpaperStyles).map(w => (
-                        <button
-                          key={w}
-                          onClick={() => { setChatWallpaper(w); setShowWallpaperPicker(false); }}
-                          className={`w-full text-xs text-left px-3 py-2 rounded-lg capitalize transition-all ${chatWallpaper === w ? 'bg-purple-500 text-white font-bold' : 'text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-gray-700'}`}
-                        >
-                          {w === 'default' && '🏠 '}
-                          {w === 'dark' && '🌙 '}
-                          {w === 'ocean' && '🌊 '}
-                          {w === 'sunset' && '🌅 '}
-                          {w === 'forest' && '🌲 '}
-                          {w}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Nickname Trigger */}
-            <button
-              onClick={() => setShowNicknameDialog(true)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
-              title="Set Nickname"
-            >
-              🏷️
-            </button>
-
-            {/* Report */}
-            <button
-              onClick={() => setShowReport(true)}
-              className="bg-yellow-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-yellow-600 transition-colors"
-            >
-              Report
-            </button>
-
-            {/* Exit */}
-            <button
-              onClick={handleExit}
-              className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-red-600 transition-colors"
-            >
-              Exit
-            </button>
           </div>
 
         </div>

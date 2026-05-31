@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import InteractiveBackground from '../components/InteractiveBackground';
 
 interface PublicChatRoomsProps {
   onTermsClick: () => void;
@@ -62,15 +63,16 @@ const PublicChatRooms: React.FC<PublicChatRoomsProps> = ({ onTermsClick, onPriva
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex flex-col">
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      <InteractiveBackground />
       <Navbar />
       
-      <div className="flex-1 py-12 px-4">
+      <div className="flex-1 py-12 px-4 z-10">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold text-gray-800 dark:text-white mb-4">Public Chat Rooms</h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300">
+            <h1 className="text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4">Public Chat Rooms</h1>
+            <p className="text-xl text-gray-600 dark:text-gray-300 font-medium">
               Join thousands of users in encrypted group conversations
             </p>
           </div>
@@ -92,10 +94,10 @@ const PublicChatRooms: React.FC<PublicChatRoomsProps> = ({ onTermsClick, onPriva
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+                className={`px-6 py-3 rounded-full font-bold transition-all border ${
                   selectedCategory === category.id
-                    ? 'bg-purple-500 text-white shadow-lg scale-105'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-purple-500 text-white border-transparent shadow-lg shadow-purple-500/20 scale-105'
+                    : 'bg-white/70 dark:bg-gray-800/70 backdrop-blur-md text-gray-700 dark:text-gray-300 border-gray-200/50 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-750'
                 }`}
               >
                 <span className="mr-2">{category.icon}</span>
@@ -106,24 +108,24 @@ const PublicChatRooms: React.FC<PublicChatRoomsProps> = ({ onTermsClick, onPriva
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border border-gray-100 dark:border-gray-700/50 rounded-2xl p-6 shadow-xl">
               <div className="text-center">
-                <p className="text-4xl font-bold text-purple-600 mb-2">
+                <p className="text-4xl font-extrabold text-purple-600 dark:text-purple-400 mb-2">
                   {chatRooms.reduce((sum, room) => sum + room.activeUsers, 0)}
                 </p>
-                <p className="text-gray-600 dark:text-gray-400">Active Users</p>
+                <p className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Active Users</p>
               </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border border-gray-100 dark:border-gray-700/50 rounded-2xl p-6 shadow-xl">
               <div className="text-center">
-                <p className="text-4xl font-bold text-blue-600 mb-2">{chatRooms.length}</p>
-                <p className="text-gray-600 dark:text-gray-400">Chat Rooms</p>
+                <p className="text-4xl font-extrabold text-blue-600 dark:text-blue-400 mb-2">{chatRooms.length}</p>
+                <p className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Chat Rooms</p>
               </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border border-gray-100 dark:border-gray-700/50 rounded-2xl p-6 shadow-xl">
               <div className="text-center">
-                <p className="text-4xl font-bold text-green-600 mb-2">8</p>
-                <p className="text-gray-600 dark:text-gray-400">Languages</p>
+                <p className="text-4xl font-extrabold text-green-600 dark:text-green-400 mb-2">8</p>
+                <p className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Languages</p>
               </div>
             </div>
           </div>
@@ -133,14 +135,14 @@ const PublicChatRooms: React.FC<PublicChatRoomsProps> = ({ onTermsClick, onPriva
             {filteredRooms.map((room) => (
               <div
                 key={room.id}
-                className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all transform hover:scale-105"
+                className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border border-gray-100 dark:border-gray-700/50 rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="text-5xl">{room.icon}</div>
-                    <div className="flex items-center space-x-2 bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded-full">
+                    <div className="flex items-center space-x-2 bg-green-100 dark:bg-green-950/40 px-3 py-1 rounded-full border border-green-200/25">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                      <span className="text-xs font-bold text-green-700 dark:text-green-400">
                         {room.activeUsers} online
                       </span>
                     </div>
@@ -149,17 +151,17 @@ const PublicChatRooms: React.FC<PublicChatRoomsProps> = ({ onTermsClick, onPriva
                   <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
                     {room.name}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4 h-12">
+                  <p className="text-sm text-gray-650 dark:text-gray-300 mb-4 h-12 leading-relaxed">
                     {room.description}
                   </p>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500 dark:text-gray-500 capitalize">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                       {room.category}
                     </span>
                     <button
                       onClick={() => handleJoinRoom(room.id)}
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-full font-bold hover:scale-105 active:scale-95 transition-all shadow-md shadow-purple-500/20"
                     >
                       Join
                     </button>

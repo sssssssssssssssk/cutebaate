@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import InteractiveBackground from '../components/InteractiveBackground';
 
 interface BlogPostProps {
   onTermsClick: () => void;
@@ -173,14 +174,15 @@ const BlogPost: React.FC<BlogPostProps> = ({ onTermsClick, onPrivacyClick, onRep
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex flex-col">
+      <div className="min-h-screen flex flex-col relative overflow-hidden">
+        <InteractiveBackground />
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center z-10">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-800 mb-4">Post Not Found</h1>
+            <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-4">Post Not Found</h1>
             <button
               onClick={() => navigate('/blog')}
-              className="text-purple-600 hover:underline"
+              className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2.5 rounded-full font-bold hover:scale-105 active:scale-95 transition-all shadow-md"
             >
               ← Back to Blog
             </button>
@@ -191,15 +193,16 @@ const BlogPost: React.FC<BlogPostProps> = ({ onTermsClick, onPrivacyClick, onRep
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex flex-col">
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      <InteractiveBackground />
       <Navbar />
       
-      <div className="flex-1 py-12 px-4">
+      <div className="flex-1 py-12 px-4 z-10">
         <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <button
             onClick={() => navigate('/blog')}
-            className="flex items-center text-gray-700 hover:text-purple-600 mb-6 transition-colors"
+            className="flex items-center text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 mb-6 font-bold transition-colors"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -208,16 +211,16 @@ const BlogPost: React.FC<BlogPostProps> = ({ onTermsClick, onPrivacyClick, onRep
           </button>
 
           {/* Article */}
-          <article className="bg-white rounded-2xl shadow-xl p-8 md:p-12">
+          <article className="bg-white/75 dark:bg-gray-800/75 backdrop-blur-md border border-gray-100 dark:border-gray-700/50 rounded-2xl shadow-xl p-8 md:p-12 hover:shadow-2xl transition-all duration-300">
             {/* Header */}
             <div className="mb-8">
               <div className="flex items-center gap-4 mb-4">
-                <span className="text-sm font-semibold text-purple-600 bg-purple-100 px-4 py-1 rounded-full">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 px-4 py-1 rounded-full border border-purple-100/30">
                   {post.category}
                 </span>
-                <span className="text-sm text-gray-500">{post.readTime}</span>
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">{post.readTime}</span>
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+              <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4 leading-tight">
                 {post.title}
               </h1>
             </div>
@@ -229,14 +232,14 @@ const BlogPost: React.FC<BlogPostProps> = ({ onTermsClick, onPrivacyClick, onRep
             />
 
             {/* CTA to Chat */}
-            <div className="mt-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-8 text-center text-white">
-              <h3 className="text-2xl font-bold mb-4">Ready to Start Chatting?</h3>
-              <p className="text-lg mb-6 opacity-90">
+            <div className="mt-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-8 text-center text-white shadow-xl shadow-purple-500/20 transform hover:scale-[1.01] transition-transform">
+              <h3 className="text-2xl font-extrabold mb-4">Ready to Start Chatting?</h3>
+              <p className="text-lg mb-6 opacity-90 font-medium animate-pulse">
                 Put what you've learned into practice. Start your first secure chat now!
               </p>
               <button
                 onClick={() => navigate('/chat-selection')}
-                className="inline-block bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors transform hover:scale-105"
+                className="inline-block bg-white text-purple-600 px-8 py-3.5 rounded-full font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-black/10"
               >
                 Go to SecureChat →
               </button>
@@ -261,45 +264,55 @@ const BlogPost: React.FC<BlogPostProps> = ({ onTermsClick, onPrivacyClick, onRep
       <style>{`
         .blog-content h2 {
           font-size: 1.875rem;
-          font-weight: 700;
-          color: #1f2937;
+          font-weight: 800;
+          color: inherit;
           margin-top: 2rem;
           margin-bottom: 1rem;
+          letter-spacing: -0.025em;
         }
         .blog-content h3 {
           font-size: 1.5rem;
-          font-weight: 600;
-          color: #374151;
+          font-weight: 700;
+          color: inherit;
           margin-top: 1.5rem;
           margin-bottom: 0.75rem;
+          letter-spacing: -0.025em;
         }
         .blog-content p {
-          color: #4b5563;
-          line-height: 1.75;
-          margin-bottom: 1rem;
+          color: inherit;
+          opacity: 0.85;
+          line-height: 1.8;
+          margin-bottom: 1.25rem;
         }
         .blog-content ul, .blog-content ol {
           margin-left: 1.5rem;
-          margin-bottom: 1rem;
-          color: #4b5563;
+          margin-bottom: 1.25rem;
+          color: inherit;
+          opacity: 0.85;
         }
         .blog-content li {
           margin-bottom: 0.5rem;
-          line-height: 1.75;
+          line-height: 1.8;
         }
         .blog-content .cta-box {
-          background: linear-gradient(to right, #f3e8ff, #fce7f3);
+          background: rgba(168, 85, 247, 0.08);
+          border: 1px solid rgba(168, 85, 247, 0.15);
           border-radius: 1rem;
           padding: 2rem;
           margin-top: 2rem;
           text-align: center;
         }
+        .dark .blog-content .cta-box {
+          background: rgba(168, 85, 247, 0.15);
+          border: 1px solid rgba(168, 85, 247, 0.25);
+        }
         .blog-content .cta-box h3 {
-          color: #7c3aed;
+          color: #a855f7;
           margin-top: 0;
         }
         .blog-content .cta-box p {
-          color: #6b21a8;
+          color: inherit;
+          opacity: 0.9;
           margin-bottom: 0;
         }
       `}</style>

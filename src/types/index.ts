@@ -20,7 +20,13 @@ export interface Message {
     | 'delete'
     | 'pin'
     | 'typing'
-    | 'read';
+    | 'read'
+    | 'gift_premium'
+    | 'group_sync'
+    | 'poll'
+    | 'poll_vote'
+    | 'group_mute'
+    | 'group_join';
     
   fileName?: string;
   fileSize?: number;
@@ -38,6 +44,7 @@ export interface Message {
   formatting?: MessageFormat;
   voiceDuration?: number; // For voice messages in seconds
   readBy?: string[]; // User IDs who read the message
+  poll?: any; // Anonymous poll data package
   
   // Control packet payload fields
   targetId?: string; // The message ID being targeted for reaction/edit/delete/pin

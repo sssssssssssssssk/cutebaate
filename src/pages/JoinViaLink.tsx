@@ -30,6 +30,11 @@ const JoinViaLink: React.FC<JoinViaLinkProps> = ({ onSessionJoined }) => {
         return;
       }
 
+      if (data.expiresAt && Date.now() > data.expiresAt) {
+        setError('This invite link has expired. Please request a new invite link.');
+        return;
+      }
+
       setParsed(data);
     } catch {
       setError('Invalid or corrupted invite link.');

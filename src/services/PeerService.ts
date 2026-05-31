@@ -15,12 +15,17 @@ class PeerService {
   private isHostMode: boolean = false;
 
   // Initialize peer with session ID
-  initializePeer(sessionId: string, isHost: boolean = false): Promise<string> {
+  initializePeer(sessionId: string, isHost: boolean = false, userId?: string): Promise<string> {
     this.isHostMode = isHost;
     return new Promise((resolve, reject) => {
       try {
-        // Clean session ID to use as peer ID
-        const peerId = sessionId.replace(/-/g, '').toLowerCase();
+        // Clean session ID to use as peer ID base
+        const sessionCleanId = sessionId.replace(/-/g, '').toLowerCase();
+        
+        // Host gets the exact session ID. Joiners get a unique ID suffixed with their userId to avoid ID collisions.
+        const peerId = isHost 
+          ? sessionCleanId 
+          : (userId ? `${sessionCleanId}_${userId.replace(/[^A-Za-z0-9]/g, '').toLowerCase()}` : undefined);
         
         this.peer = new Peer(peerId, {
           debug: 0,
@@ -228,6 +233,16 @@ class PeerService {
   // Get active connection count
   getConnectionCount(): number {
     return this.connections.filter(c => c.open).length;
+  }
+
+  // Get raw PeerJS peer reference
+  getPeer(): Peer | null {
+    return this.peer;
+  }
+
+  // Get raw active connections
+  getConnections(): DataConnection[] {
+    return this.connections;
   }
 }
 

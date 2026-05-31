@@ -227,26 +227,7 @@ const Settings: React.FC<SettingsProps> = ({ onTermsClick, onPrivacyClick, onRep
                 </button>
               </div>
 
-              {/* Screenshot Detection */}
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <h3 className="font-semibold text-gray-800 dark:text-white">Screenshot Detection</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Alert when screenshots are taken
-                    {!isPremium && <span className="text-purple-500 ml-1">(Premium)</span>}
-                  </p>
-                </div>
-                <button
-                  onClick={toggleScreenshotDetection}
-                  disabled={!isPremium}
-                  className={`w-12 h-7 rounded-full transition-colors relative ${
-                    !isPremium ? 'bg-gray-200 dark:bg-gray-700 opacity-50 cursor-not-allowed' :
-                    screenshotDetection ? 'bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'
-                  }`}
-                >
-                  <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform ${screenshotDetection ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
+              {/* Screenshot Detection is now free and active by default */}
             </div>
           </div>
 

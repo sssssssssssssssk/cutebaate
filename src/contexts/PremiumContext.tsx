@@ -34,7 +34,7 @@ const premiumFeaturesByTier: Record<PremiumTier, PremiumFeatures> = {
     prioritySpeed: false,
     sessionHistory: false,
     customThemes: false,
-    voiceCalls: false,
+    voiceCalls: true,
     screenShare: false,
     maxFileSize: 5,
     sessionDuration: 1,

@@ -5,132 +5,175 @@ interface StickerGifPickerProps {
   onClose: () => void;
 }
 
+type EmojiCategory = 'smileys' | 'gestures' | 'celebrations' | 'stickers';
+
 const StickerGifPicker: React.FC<StickerGifPickerProps> = ({ onSelect, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'stickers' | 'gifs'>('stickers');
+  const [activeTab, setActiveTab] = useState<EmojiCategory>('smileys');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const emojiCategories: Record<Exclude<EmojiCategory, 'stickers'>, { name: string; icon: string; emojis: string[] }> = {
+    smileys: {
+      name: 'Smileys & Emotion',
+      icon: '😀',
+      emojis: [
+        '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', 
+        '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', 
+        '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', 
+        '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', 
+        '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', 
+        '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', 
+        '💀', '☠️', '👽', '👾', '🤖', '🎃'
+      ]
+    },
+    gestures: {
+      name: 'Hearts & Gestures',
+      icon: '👋',
+      emojis: [
+        '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', 
+        '💘', '💝', '💟', '👍', '👎', '✊', '👊', '🤛', '🤜', '🤞', '✌️', '🤟', '🤘', '👌', '🤏', '👈', 
+        '👉', '👆', '👇', '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤙', '💪', '🖕', '✍️', '🙏', '🤝', '👏', 
+        '🙌', '👐', '🤲', '👂', '👃', '🧠', '🦷', '👁️', '👀'
+      ]
+    },
+    celebrations: {
+      name: 'Activities & Celebrations',
+      icon: '🎉',
+      emojis: [
+        '🎉', '🎊', '🎈', '🎂', '🎁', '🎇', '🎆', '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', 
+        '🎱', '🪀', '🏓', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', 
+        '🥋', '🥇', '🥈', '🥉', '🏅', '🏆', '🏵️', '🎫', '🎟️', '🎭', '🎨', '🎬', '🎤', '🎧', '🎷', '🎺', 
+        '🎸', '🪕', '🎻', '🎲', '🧩', '♟️', '🎳'
+      ]
+    }
+  };
+
   const stickers = [
-    { id: '1', emoji: '😀', name: 'Happy' },
-    { id: '2', emoji: '😂', name: 'Laughing' },
-    { id: '3', emoji: '❤️', name: 'Heart' },
-    { id: '4', emoji: '🎉', name: 'Party' },
-    { id: '5', emoji: '🔥', name: 'Fire' },
-    { id: '6', emoji: '💯', name: 'Hundred' },
-    { id: '7', emoji: '👍', name: 'Thumbs Up' },
-    { id: '8', emoji: '🙏', name: 'Prayer' },
-    { id: '9', emoji: '😍', name: 'Heart Eyes' },
-    { id: '10', emoji: '🤔', name: 'Thinking' },
-    { id: '11', emoji: '😎', name: 'Cool' },
-    { id: '12', emoji: '🤗', name: 'Hug' },
+    { id: 'st1', emoji: '🦊', name: 'Cool Fox' },
+    { id: 'st2', emoji: '🦁', name: 'Happy Lion' },
+    { id: 'st3', emoji: '🦄', name: 'Magic Unicorn' },
+    { id: 'st4', emoji: '🐼', name: 'Cute Panda' },
+    { id: 'st5', emoji: '🐨', name: 'Sleepy Koala' },
+    { id: 'st6', emoji: '👾', name: 'Pixel Alien' },
+    { id: 'st7', emoji: '👻', name: 'Spooky Ghost' },
+    { id: 'st8', emoji: '🤖', name: 'Retro Robot' },
+    { id: 'st9', emoji: '🔥', name: 'Fire Sticker' },
+    { id: 'st10', emoji: '💯', name: 'Golden Score' },
+    { id: 'st11', emoji: '🌟', name: 'Bright Star' },
+    { id: 'st12', emoji: '🦖', name: 'Baby Dino' },
   ];
 
-  // In production, integrate with GIPHY API
-  const gifs = [
-    { id: '1', url: 'https://media.giphy.com/media/3oriO0OEd9QIDdllqo/giphy.gif', name: 'Dance' },
-    { id: '2', url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif', name: 'Celebrate' },
-    { id: '3', url: 'https://media.giphy.com/media/kyLYXonQYYfwYDIeZl/giphy.gif', name: 'High Five' },
-  ];
+  const getFilteredItems = () => {
+    if (activeTab === 'stickers') {
+      return stickers.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    const cat = emojiCategories[activeTab];
+    if (!cat) return [];
+    return cat.emojis.filter(emoji => 
+      searchQuery ? emoji.includes(searchQuery) : true
+    );
+  };
 
-  const filteredStickers = stickers.filter(s => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredGifs = gifs.filter(g => 
-    g.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const items = getFilteredItems();
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in select-none">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-md shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[80vh] transition-colors">
         {/* Header */}
-        <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+        <div className="border-b border-zinc-200 dark:border-zinc-800 p-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white">
-              {activeTab === 'stickers' ? 'Stickers' : 'GIFs'}
+            <h3 className="text-lg font-bold text-gray-800 dark:text-zinc-100 flex items-center space-x-2">
+              <span>😀</span>
+              <span>Emojis & Stickers</span>
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-250 cursor-pointer text-sm font-bold"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              ✕
             </button>
           </div>
 
-          {/* Tabs */}
-          <div className="flex space-x-2 mb-4">
+          {/* Categories Tab Selector */}
+          <div className="flex space-x-1 bg-gray-100 dark:bg-zinc-950 p-1 rounded-xl mb-4 transition-colors">
+            {Object.entries(emojiCategories).map(([key, value]) => (
+              <button
+                key={key}
+                onClick={() => { setActiveTab(key as EmojiCategory); setSearchQuery(''); }}
+                className={`flex-1 py-2 px-1 text-center rounded-lg font-semibold text-xs sm:text-sm transition-all cursor-pointer ${
+                  activeTab === key
+                    ? 'bg-purple-500 text-white shadow-md'
+                    : 'text-gray-600 dark:text-zinc-400 hover:text-gray-800 dark:hover:text-zinc-200'
+                }`}
+                title={value.name}
+              >
+                <span className="mr-1">{value.icon}</span>
+                <span className="hidden sm:inline">{key.charAt(0).toUpperCase() + key.slice(1)}</span>
+              </button>
+            ))}
             <button
-              onClick={() => setActiveTab('stickers')}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+              onClick={() => { setActiveTab('stickers'); setSearchQuery(''); }}
+              className={`flex-1 py-2 px-1 text-center rounded-lg font-semibold text-xs sm:text-sm transition-all cursor-pointer ${
                 activeTab === 'stickers'
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  ? 'bg-purple-500 text-white shadow-md'
+                  : 'text-gray-600 dark:text-zinc-400 hover:text-gray-800 dark:hover:text-zinc-200'
               }`}
+              title="Cute Stickers"
             >
-              😀 Stickers
-            </button>
-            <button
-              onClick={() => setActiveTab('gifs')}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
-                activeTab === 'gifs'
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
-            >
-              🎬 GIFs
+              <span className="mr-1">🦊</span>
+              <span className="hidden sm:inline">Stickers</span>
             </button>
           </div>
 
-          {/* Search */}
+          {/* Search Box */}
           <input
             type="text"
-            placeholder={`Search ${activeTab}...`}
+            placeholder={activeTab === 'stickers' ? 'Search stickers...' : 'Filter emojis...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 rounded-lg border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:outline-none"
+            className="w-full px-4 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-800 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:border-purple-500 focus:outline-hidden transition-colors"
           />
         </div>
 
-        {/* Content */}
-        <div className="p-4 max-h-96 overflow-y-auto">
+        {/* Content Box */}
+        <div className="p-4 overflow-y-auto flex-1 bg-zinc-50 dark:bg-zinc-950/40">
           {activeTab === 'stickers' ? (
-            <div className="grid grid-cols-4 gap-4">
-              {filteredStickers.map((sticker) => (
+            <div className="grid grid-cols-4 gap-3">
+              {(items as typeof stickers).map((sticker) => (
                 <button
                   key={sticker.id}
                   onClick={() => {
                     onSelect('sticker', sticker.emoji);
                     onClose();
                   }}
-                  className="aspect-square flex items-center justify-center text-5xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
+                  className="aspect-square flex flex-col items-center justify-center text-4xl hover:bg-purple-50 dark:hover:bg-zinc-800/80 rounded-xl transition-all cursor-pointer active:scale-90"
                   title={sticker.name}
                 >
-                  {sticker.emoji}
+                  <span>{sticker.emoji}</span>
+                  <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-medium mt-1 truncate max-w-full px-1">{sticker.name}</span>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
-              {filteredGifs.map((gif) => (
+            <div className="grid grid-cols-6 sm:grid-cols-8 gap-3.5">
+              {(items as string[]).map((emoji, idx) => (
                 <button
-                  key={gif.id}
+                  key={idx}
                   onClick={() => {
-                    onSelect('gif', gif.url);
+                    // Send emoji as sticker/emoji packet
+                    onSelect('sticker', emoji);
                     onClose();
                   }}
-                  className="aspect-square rounded-xl overflow-hidden hover:ring-4 ring-purple-500 transition-all"
-                  title={gif.name}
+                  className="aspect-square flex items-center justify-center text-3xl sm:text-3.5xl hover:bg-purple-50 dark:hover:bg-zinc-850 rounded-xl transition-all cursor-pointer active:scale-90"
                 >
-                  <img src={gif.url} alt={gif.name} className="w-full h-full object-cover" />
+                  {emoji}
                 </button>
               ))}
             </div>
           )}
 
-          {(activeTab === 'stickers' ? filteredStickers : filteredGifs).length === 0 && (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              No {activeTab} found
+          {items.length === 0 && (
+            <div className="text-center py-12 text-sm text-zinc-400 dark:text-zinc-500 font-semibold">
+              No matching emojis found
             </div>
           )}
         </div>

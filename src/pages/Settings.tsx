@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import InteractiveBackground from '../components/InteractiveBackground';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage, Language } from '../contexts/LanguageContext';
 import { usePremium } from '../contexts/PremiumContext';
@@ -61,11 +62,8 @@ const Settings: React.FC<SettingsProps> = ({ onTermsClick, onPrivacyClick, onRep
   const plan = planLabels[tier];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-pink-50 to-blue-50 dark:from-slate-950 dark:via-purple-950/10 dark:to-slate-950 flex flex-col relative overflow-hidden">
-      {/* Dynamic Background Blobs */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-300/20 dark:bg-purple-900/10 rounded-full blur-3xl -z-10 pointer-events-none animate-pulse"></div>
-      <div className="absolute bottom-10 right-1/4 w-[500px] h-[500px] bg-pink-300/20 dark:bg-pink-900/10 rounded-full blur-3xl -z-10 pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
-
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      <InteractiveBackground />
       <Navbar />
       
       <div className="flex-1 py-12 px-4 z-10">

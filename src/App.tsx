@@ -44,6 +44,15 @@ function App() {
     };
     autoLoadKey();
   }, []);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    if (ref) {
+      localStorage.setItem('referred_by', ref.trim());
+      console.log('Referral code captured from URL:', ref);
+    }
+  }, []);
   const [isHost, setIsHost] = useState(() => {
     return localStorage.getItem('active_chat_is_host') === 'true';
   });

@@ -524,6 +524,58 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost: isHostProp, isGrou
       return;
     }
 
+    if (message.type === 'referral_claim') {
+      const myCode = localStorage.getItem('referral_code');
+      if (message.content === myCode) {
+        const currentStats = JSON.parse(localStorage.getItem('referral_stats') || '{"totalReferrals":0,"premiumDaysEarned":0,"pendingRewards":0}');
+        const newTotal = currentStats.totalReferrals + 1;
+        
+        let days = 3;
+        if (newTotal >= 50) days = 365;
+        else if (newTotal >= 25) days = 90;
+        else if (newTotal >= 10) days = 30;
+        else if (newTotal >= 5) days = 7;
+
+        const newStats = {
+          totalReferrals: newTotal,
+          premiumDaysEarned: (currentStats.premiumDaysEarned || 0) + days,
+          pendingRewards: 0
+        };
+        localStorage.setItem('referral_stats', JSON.stringify(newStats));
+        
+        try {
+          upgradeToPremium();
+        } catch {}
+        localStorage.setItem('premiumTier', 'premium');
+
+        alert(`🎉 Referral successful! A partner joined using your link. You earned +${days} days of Premium!`);
+
+        try {
+          PeerService.sendMessage({
+            id: `refconf_${Date.now()}`,
+            senderId: session.userId,
+            content: message.content,
+            timestamp: Date.now(),
+            type: 'referral_confirm'
+          });
+        } catch {}
+      }
+      return;
+    }
+
+    if (message.type === 'referral_confirm') {
+      const referredBy = message.content;
+      localStorage.setItem(`referral_claimed_${referredBy}`, 'true');
+      
+      try {
+        upgradeToPremium();
+      } catch {}
+      localStorage.setItem('premiumTier', 'premium');
+      
+      alert("🎉 Referral Claimed! You have earned 3 days of FREE Premium!");
+      return;
+    }
+
     if (message.type === 'group_sync') {
       try {
         const roster = JSON.parse(message.content);
@@ -631,6 +683,22 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost: isHostProp, isGrou
           type: 'group_join'
         });
       } catch {}
+
+      const referredBy = localStorage.getItem('referred_by');
+      const alreadyClaimed = referredBy ? localStorage.getItem(`referral_claimed_${referredBy}`) === 'true' : false;
+      if (referredBy && !alreadyClaimed) {
+        try {
+          PeerService.sendMessage({
+            id: `ref_${Date.now()}`,
+            senderId: session.userId,
+            content: referredBy,
+            timestamp: Date.now(),
+            type: 'referral_claim'
+          });
+        } catch (err) {
+          console.error('Failed to send referral claim packet:', err);
+        }
+      }
     }
 
     if (!connected && messages.length > 0) {

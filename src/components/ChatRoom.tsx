@@ -1040,13 +1040,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost: isHostProp, isGrou
   };
 
   const handleGiftSubmit = () => {
-    const keyId = localStorage.getItem('razorpay_key_id');
-    if (!keyId) {
-      alert("⚠️ Razorpay Key ID is not configured!\n\nTo activate gifting, please navigate to settings and configure your public Razorpay Key ID (or drag-and-drop your 'rzp-key.csv' file).");
-      setIsGiftProcessing(false);
-      return;
-    }
     setIsGiftProcessing(true);
+    const keyId = localStorage.getItem('razorpay_key_id') || 'rzp_live_SxysR2d6LDQ7ee';
     
     const options = {
       key: keyId,

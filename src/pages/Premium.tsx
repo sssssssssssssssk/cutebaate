@@ -18,12 +18,7 @@ const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onRepor
   const navigate = useNavigate();
 
   const handleUpgradePayment = (planName: 'premium' | 'enterprise', priceInRupees: number) => {
-    const keyId = localStorage.getItem('razorpay_key_id');
-    if (!keyId) {
-      alert("⚠️ Razorpay Key ID is not configured!\n\nTo enable payments on this device, please navigate to settings and configure your public Razorpay Key ID (or drag-and-drop your 'rzp-key.csv' file).");
-      navigate('/settings');
-      return;
-    }
+    const keyId = localStorage.getItem('razorpay_key_id') || 'rzp_live_SxysR2d6LDQ7ee';
     
     const options = {
       key: keyId,

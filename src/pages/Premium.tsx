@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import InteractiveBackground from '../components/InteractiveBackground';
@@ -14,9 +15,15 @@ interface PremiumProps {
 const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onReportClick }) => {
   const { tier, upgradeToPremium, upgradeToEnterprise, cancelPremium } = usePremium();
   const { openCheckout } = useRazorpay();
+  const navigate = useNavigate();
 
   const handleUpgradePayment = (planName: 'premium' | 'enterprise', priceInRupees: number) => {
-    const keyId = localStorage.getItem('razorpay_key_id') || 'rzp_test_eD2B6LpE9y9x1F';
+    const keyId = localStorage.getItem('razorpay_key_id');
+    if (!keyId) {
+      alert("⚠️ Razorpay Key ID is not configured!\n\nTo enable payments on this device, please navigate to settings and configure your public Razorpay Key ID (or drag-and-drop your 'rzp-key.csv' file).");
+      navigate('/settings');
+      return;
+    }
     
     const options = {
       key: keyId,

@@ -895,7 +895,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost: isHostProp, isGrou
       
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
-        video: type === 'video'
+        video: type === 'video' ? {
+          width: { ideal: 640, max: 1280 },
+          height: { ideal: 480, max: 720 },
+          frameRate: { ideal: 24, max: 30 },
+          facingMode: 'user'
+        } : false
       });
       setLocalStream(stream);
 
@@ -943,7 +948,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost: isHostProp, isGrou
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
-        video: callType === 'video'
+        video: callType === 'video' ? {
+          width: { ideal: 640, max: 1280 },
+          height: { ideal: 480, max: 720 },
+          frameRate: { ideal: 24, max: 30 },
+          facingMode: 'user'
+        } : false
       });
       setLocalStream(stream);
 
@@ -1030,8 +1040,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost: isHostProp, isGrou
   };
 
   const handleGiftSubmit = () => {
+    const keyId = localStorage.getItem('razorpay_key_id');
+    if (!keyId) {
+      alert("⚠️ Razorpay Key ID is not configured!\n\nTo activate gifting, please navigate to settings and configure your public Razorpay Key ID (or drag-and-drop your 'rzp-key.csv' file).");
+      setIsGiftProcessing(false);
+      return;
+    }
     setIsGiftProcessing(true);
-    const keyId = localStorage.getItem('razorpay_key_id') || 'rzp_test_eD2B6LpE9y9x1F';
     
     const options = {
       key: keyId,

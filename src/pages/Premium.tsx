@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import InteractiveBackground from '../components/InteractiveBackground';
 import { usePremium } from '../contexts/PremiumContext';
+import { useRazorpay } from '../hooks/useRazorpay';
 
 interface PremiumProps {
   onTermsClick: () => void;
@@ -12,6 +13,44 @@ interface PremiumProps {
 
 const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onReportClick }) => {
   const { tier, upgradeToPremium, upgradeToEnterprise, cancelPremium } = usePremium();
+  const { openCheckout } = useRazorpay();
+
+  const handleUpgradePayment = (planName: 'premium' | 'enterprise', priceInRupees: number) => {
+    const keyId = localStorage.getItem('razorpay_key_id') || 'rzp_test_eD2B6LpE9y9x1F';
+    
+    const options = {
+      key: keyId,
+      amount: priceInRupees * 100, // amount in paise
+      currency: 'INR',
+      name: 'SecureChat Inc.',
+      description: `Upgrade to ${planName.charAt(0).toUpperCase() + planName.slice(1)} Subscription`,
+      image: 'https://cdn-icons-png.flaticon.com/512/3064/3064197.png',
+      handler: function (response: any) {
+        console.log('Payment Successful:', response);
+        localStorage.setItem('razorpay_payment_id', response.razorpay_payment_id);
+        
+        if (planName === 'premium') {
+          upgradeToPremium();
+        } else {
+          upgradeToEnterprise();
+        }
+        alert(`Payment Successful! Transaction ID: ${response.razorpay_payment_id}. Your account has been upgraded to ${planName.charAt(0).toUpperCase() + planName.slice(1)}.`);
+      },
+      prefill: {
+        name: 'Anonymous Chat User',
+        email: 'chat@securechat.io',
+        contact: '9999999999'
+      },
+      notes: {
+        plan: planName
+      },
+      theme: {
+        color: planName === 'premium' ? '#a855f7' : '#3b82f6'
+      }
+    };
+
+    openCheckout(options);
+  };
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
@@ -44,7 +83,7 @@ const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onRepor
                 <div className="text-4xl mb-3">🆓</div>
                 <h3 className="text-2xl font-bold text-gray-800 dark:text-white">Free</h3>
                 <div className="mt-2">
-                  <span className="text-4xl font-bold text-gray-800 dark:text-white">$0</span>
+                  <span className="text-4xl font-bold text-gray-800 dark:text-white">₹0</span>
                   <span className="text-gray-500">/forever</span>
                 </div>
               </div>
@@ -77,7 +116,7 @@ const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onRepor
                 <div className="text-4xl mb-3">💎</div>
                 <h3 className="text-2xl font-bold text-gray-800 dark:text-white">Premium</h3>
                 <div className="mt-2">
-                  <span className="text-4xl font-bold text-purple-600">$4.99</span>
+                  <span className="text-4xl font-bold text-purple-600">₹49</span>
                   <span className="text-gray-500">/month</span>
                 </div>
               </div>
@@ -95,7 +134,7 @@ const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onRepor
               {tier === 'premium' ? (
                 <div className="text-center text-purple-600 font-bold py-3 border-2 border-purple-500 rounded-xl">✨ Active</div>
               ) : (
-                <button onClick={upgradeToPremium} className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg">
+                <button onClick={() => handleUpgradePayment('premium', 49)} className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg">
                   Upgrade to Premium
                 </button>
               )}
@@ -107,7 +146,7 @@ const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onRepor
                 <div className="text-4xl mb-3">🏢</div>
                 <h3 className="text-2xl font-bold text-gray-800 dark:text-white">Enterprise</h3>
                 <div className="mt-2">
-                  <span className="text-4xl font-bold text-blue-600">$14.99</span>
+                  <span className="text-4xl font-bold text-blue-600">₹99</span>
                   <span className="text-gray-500">/month</span>
                 </div>
               </div>
@@ -121,7 +160,7 @@ const Premium: React.FC<PremiumProps> = ({ onTermsClick, onPrivacyClick, onRepor
               {tier === 'enterprise' ? (
                 <div className="text-center text-blue-600 font-bold py-3 border-2 border-blue-500 rounded-xl">🚀 Active</div>
               ) : (
-                <button onClick={upgradeToEnterprise} className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg">
+                <button onClick={() => handleUpgradePayment('enterprise', 99)} className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg">
                   Upgrade to Enterprise
                 </button>
               )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -22,6 +22,65 @@ const Settings: React.FC<SettingsProps> = ({ onTermsClick, onPrivacyClick, onRep
   const [screenshotDetection, setScreenshotDetection] = useState(() => localStorage.getItem('screenshot_detection') === 'true');
   const [readReceipts, setReadReceipts] = useState(() => localStorage.getItem('read_receipts') !== 'false');
   const [typingIndicators, setTypingIndicators] = useState(() => localStorage.getItem('typing_indicators') !== 'false');
+
+  const [razorpayKeyId, setRazorpayKeyId] = useState(() => localStorage.getItem('razorpay_key_id') || '');
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processCSV(file);
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processCSV(file);
+    }
+  };
+
+  const onButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const processCSV = (file: File) => {
+    if (!file.name.endsWith('.csv')) {
+      alert('Please upload a .csv file.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) {
+        alert('Could not read the uploaded CSV file.');
+        return;
+      }
+      const match = text.match(/rzp_(test|live)_[a-zA-Z0-9]+/);
+      if (match) {
+        const keyId = match[0];
+        setRazorpayKeyId(keyId);
+        localStorage.setItem('razorpay_key_id', keyId);
+        alert(`Successfully imported Razorpay Key ID: ${keyId}`);
+      } else {
+        alert('No valid Razorpay Key ID (starting with rzp_test_ or rzp_live_) was found in the CSV file.');
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const toggleScreenshotDetection = () => {
     if (!isPremium) return;
@@ -230,6 +289,87 @@ const Settings: React.FC<SettingsProps> = ({ onTermsClick, onPrivacyClick, onRep
               </div>
 
               {/* Screenshot Detection is now free and active by default */}
+            </div>
+          </div>
+
+          {/* Razorpay Integration */}
+          <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md border border-gray-100 dark:border-gray-700/50 rounded-2xl shadow-xl p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2 flex items-center gap-2">
+              <span>💳</span> Razorpay Integration
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              Configure your public Razorpay API Key (Key ID) to enable premium feature billing and E2E gifting.
+            </p>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Razorpay Key ID
+                </label>
+                <input
+                  type="text"
+                  value={razorpayKeyId}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    setRazorpayKeyId(val);
+                    localStorage.setItem('razorpay_key_id', val);
+                  }}
+                  placeholder="rzp_test_..."
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 font-mono text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave empty to use the standard test environment default key.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Quick Import from key.csv
+                </label>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVUpload}
+                  className="hidden"
+                />
+
+                <div
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={onButtonClick}
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center space-y-2 ${
+                    dragActive
+                      ? 'border-purple-500 bg-purple-500/5 dark:bg-purple-500/10'
+                      : 'border-gray-200 dark:border-gray-750 hover:border-purple-400 hover:bg-gray-50/50 dark:hover:bg-gray-900/10'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-950/40 flex items-center justify-center text-purple-650 dark:text-purple-400">
+                    📥
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                      Drag & drop your key.csv here
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Or click to browse and select the CSV file from your computer
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 bg-purple-500/5 dark:bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 mb-1">How to obtain key.csv:</h4>
+                  <ol className="text-xs text-gray-600 dark:text-gray-400 list-decimal list-inside space-y-1">
+                    <li>Log into your <a href="https://dashboard.razorpay.com" target="_blank" rel="noreferrer" className="text-purple-600 underline">Razorpay Dashboard</a></li>
+                    <li>Navigate to <strong>Settings</strong> &gt; <strong>API Keys</strong></li>
+                    <li>Click <strong>Generate Key</strong> (or Regenerate Key)</li>
+                    <li>Download the generated key details as a <code>.csv</code> file, then drop it above!</li>
+                  </ol>
+                </div>
+              </div>
             </div>
           </div>
 

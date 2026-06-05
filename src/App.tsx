@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import About from './pages/About';
@@ -19,9 +19,37 @@ import ReportModal from './components/ReportModal';
 import { Session } from './types';
 
 function App() {
-  const [currentSession, setCurrentSession] = useState<Session | null>(null);
-  const [isHost, setIsHost] = useState(false);
-  const [isGroup, setIsGroup] = useState(false);
+  const [currentSession, setCurrentSession] = useState<Session | null>(() => {
+    const saved = localStorage.getItem('active_chat_session');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  useEffect(() => {
+    const autoLoadKey = async () => {
+      if (localStorage.getItem('razorpay_key_id')) return;
+      try {
+        const res = await fetch('/rzp-key.csv');
+        if (res.ok) {
+          const text = await res.text();
+          const match = text.match(/rzp_(test|live)_[a-zA-Z0-9]+/);
+          if (match) {
+            const keyId = match[0];
+            localStorage.setItem('razorpay_key_id', keyId);
+            console.log('Automatically loaded Razorpay Key ID from rzp-key.csv:', keyId);
+          }
+        }
+      } catch (err) {
+        // Ignore if file doesn't exist
+      }
+    };
+    autoLoadKey();
+  }, []);
+  const [isHost, setIsHost] = useState(() => {
+    return localStorage.getItem('active_chat_is_host') === 'true';
+  });
+  const [isGroup, setIsGroup] = useState(() => {
+    return localStorage.getItem('active_chat_is_group') === 'true';
+  });
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -30,18 +58,27 @@ function App() {
     setCurrentSession(session);
     setIsHost(true);
     setIsGroup(groupChat);
+    localStorage.setItem('active_chat_session', JSON.stringify(session));
+    localStorage.setItem('active_chat_is_host', 'true');
+    localStorage.setItem('active_chat_is_group', String(groupChat));
   };
 
   const handleSessionJoined = (session: Session, groupChat: boolean) => {
     setCurrentSession(session);
     setIsHost(false);
     setIsGroup(groupChat);
+    localStorage.setItem('active_chat_session', JSON.stringify(session));
+    localStorage.setItem('active_chat_is_host', 'false');
+    localStorage.setItem('active_chat_is_group', String(groupChat));
   };
 
   const handleExitChat = () => {
     setCurrentSession(null);
     setIsHost(false);
     setIsGroup(false);
+    localStorage.removeItem('active_chat_session');
+    localStorage.removeItem('active_chat_is_host');
+    localStorage.removeItem('active_chat_is_group');
   };
 
   // If in chat, show chat room

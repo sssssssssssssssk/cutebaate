@@ -10,6 +10,7 @@ import AnalyticsService from '../services/AnalyticsService';
 import { useSessionDuration } from '../hooks/useSessionDuration';
 import { usePremium } from '../contexts/PremiumContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useRazorpay } from '../hooks/useRazorpay';
 import { cleanupSession } from '../utils/sessionUtils';
 import GroupManagementPanel from './GroupManagementPanel';
 import PollCreator from './PollCreator';
@@ -26,8 +27,12 @@ interface ChatRoomProps {
   onExit: () => void;
 }
 
-const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, onExit }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost: isHostProp, isGroup = false, onExit }) => {
+  const isHost = isHostProp && localStorage.getItem('active_chat_is_host') !== 'false';
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem(`chat_messages_${session.sessionId}`);
+    return saved ? JSON.parse(saved) : [];
+  });
   const [inputMessage, setInputMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
@@ -96,6 +101,28 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
   // Poll state
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
+  const [selfDestructSec, setSelfDestructSec] = useState(0);
+
+  const getInitials = (name: string) => {
+    if (!name) return 'S';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'bg-red-500', 'bg-pink-500', 'bg-purple-500', 'bg-indigo-500',
+      'bg-blue-500', 'bg-sky-500', 'bg-teal-500', 'bg-green-500',
+      'bg-emerald-500', 'bg-amber-500', 'bg-orange-500'
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -149,6 +176,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
   const { formatted } = useSessionDuration(session.createdAt);
   const { features, upgradeToPremium } = usePremium();
   const { t } = useLanguage();
+  const { openCheckout } = useRazorpay();
 
   // Gamification — Streak
   const streak = AnalyticsService.getSessionStats().streak;
@@ -256,6 +284,33 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
     localStorage.setItem('chat_wallpaper', chatWallpaper);
   }, [chatWallpaper]);
 
+  // Persist chat messages to survive accidental reloads
+  useEffect(() => {
+    if (session?.sessionId) {
+      localStorage.setItem(`chat_messages_${session.sessionId}`, JSON.stringify(messages));
+    }
+  }, [messages, session.sessionId]);
+
+  // Prevent accidental tab closes or page refreshes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Are you sure you want to leave the chat room? Active chats will be preserved locally unless the Host ends the session.';
+      return e.returnValue;
+    };
+
+    const handleUnload = () => {
+      PeerService.destroy();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('unload', handleUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('unload', handleUnload);
+    };
+  }, []);
+
   // Screenshot detection — active by default
   useEffect(() => {
     const isEnabled = true;
@@ -305,30 +360,56 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
   };
 
   const initializeChat = async () => {
+    let retries = 3;
+    let delay = 1500;
+
+    const attemptInitialization = async (): Promise<void> => {
+      try {
+        EncryptionService.initializeKey(session.password);
+
+        PeerService.onMessage(handleIncomingMessage);
+        PeerService.onConnectionChange(handleConnectionChange);
+        PeerService.onError(handlePeerError);
+
+        await PeerService.initializePeer(session.sessionId, isHost, session.userId);
+        
+        const peer = PeerService.getPeer();
+        if (peer) {
+          peer.on('call', (call: any) => {
+            setIncomingCallRef(call);
+            setCallType(call.metadata?.isVideo ? 'video' : 'voice');
+            setCallState('incoming');
+          });
+        }
+        
+        if (isHost) {
+          setIsConnecting(true);
+        } else {
+          await PeerService.connectToPeer(session.sessionId);
+          setIsConnecting(false);
+        }
+      } catch (err: any) {
+        if (err.message?.includes('already in use') && retries > 0) {
+          console.warn(`Peer ID lingering on server. Retrying in ${delay}ms... (${retries} attempts left)`);
+          setIsConnecting(true);
+          setError(`Connecting... (Reusing session, retrying in ${(delay / 1000).toFixed(1)}s)`);
+          
+          // Terminate current PeerJS instance before retrying
+          PeerService.destroy();
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          retries--;
+          delay += 1000;
+          return attemptInitialization();
+        }
+        throw err;
+      }
+    };
+
     try {
-      EncryptionService.initializeKey(session.password);
-
-      PeerService.onMessage(handleIncomingMessage);
-      PeerService.onConnectionChange(handleConnectionChange);
-      PeerService.onError(handlePeerError);
-
-      await PeerService.initializePeer(session.sessionId, isHost, session.userId);
-      
-      const peer = PeerService.getPeer();
-      if (peer) {
-        peer.on('call', (call: any) => {
-          setIncomingCallRef(call);
-          setCallType(call.metadata?.isVideo ? 'video' : 'voice');
-          setCallState('incoming');
-        });
-      }
-      
-      if (isHost) {
-        setIsConnecting(true);
-      } else {
-        await PeerService.connectToPeer(session.sessionId);
-        setIsConnecting(false);
-      }
+      setError(null);
+      await attemptInitialization();
+      setError(null);
     } catch (error: any) {
       console.error('Failed to initialize chat:', error);
       setError(error.message || 'Failed to initialize chat');
@@ -337,6 +418,21 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
   };
 
   const handleIncomingMessage = (message: Message) => {
+    // Check if the host exited the session
+    if (message.type === 'host_exit') {
+      alert("🔒 The Host has ended this session. All chats have been permanently deleted.");
+      
+      localStorage.removeItem('active_chat_session');
+      localStorage.removeItem('active_chat_is_host');
+      localStorage.removeItem('active_chat_is_group');
+      localStorage.removeItem(`chat_messages_${session.sessionId}`);
+      
+      PeerService.destroy();
+      cleanupSession();
+      onExit();
+      return;
+    }
+
     // Check if we are kicked
     if (message.type === 'delete' && message.content === 'kick' && message.targetId === session.userId) {
       alert("⚠️ You have been kicked from this group chat by the Host.");
@@ -581,10 +677,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
   const handleSendTextMessage = () => {
     if (!inputMessage.trim() || !isConnected) return;
 
-    // Check for self-destruct setting from the header/input toggle
-    const sdSelect = document.getElementById('self-destruct-select') as HTMLSelectElement;
-    const sdVal = sdSelect ? parseInt(sdSelect.value) : 0;
-
+    const sdVal = selfDestructSec;
     const text = inputMessage.trim();
 
     // Easter egg checks
@@ -938,20 +1031,59 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
 
   const handleGiftSubmit = () => {
     setIsGiftProcessing(true);
-    setTimeout(() => {
+    const keyId = localStorage.getItem('razorpay_key_id') || 'rzp_test_eD2B6LpE9y9x1F';
+    
+    const options = {
+      key: keyId,
+      amount: 4900, // ₹49 in paise
+      currency: 'INR',
+      name: 'SecureChat Inc.',
+      description: 'Gift Premium Subscription to Chat Partner',
+      image: 'https://cdn-icons-png.flaticon.com/512/3064/3064197.png',
+      handler: function (response: any) {
+        console.log('Gift Payment Successful:', response);
+        localStorage.setItem('razorpay_gift_payment_id', response.razorpay_payment_id);
+        
+        setIsGiftProcessing(false);
+        setShowGiftModal(false);
+        try {
+          PeerService.sendMessage({
+            id: `gift_${Date.now()}`,
+            senderId: session.userId,
+            content: 'premium',
+            timestamp: Date.now(),
+            type: 'gift_premium'
+          });
+          alert(`Gift Sent Successfully! Transaction ID: ${response.razorpay_payment_id}. Your partner has been upgraded to Premium.`);
+        } catch (err) {
+          console.error('Failed to send E2E gift premium packet:', err);
+          alert('Payment was successful, but E2E signaling failed. Please try messaging your partner.');
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          setIsGiftProcessing(false);
+        }
+      },
+      prefill: {
+        name: 'Anonymous Chat Gifter',
+        email: 'gift@securechat.io',
+        contact: '9999999999'
+      },
+      notes: {
+        gift: 'premium_tier'
+      },
+      theme: {
+        color: '#a855f7'
+      }
+    };
+
+    try {
+      openCheckout(options);
+    } catch (err) {
+      console.error('Razorpay gift checkout error:', err);
       setIsGiftProcessing(false);
-      setShowGiftModal(false);
-      try {
-        PeerService.sendMessage({
-          id: `gift_${Date.now()}`,
-          senderId: session.userId,
-          content: 'premium',
-          timestamp: Date.now(),
-          type: 'gift_premium'
-        });
-      } catch {}
-      alert("Gift sent successfully! 🎁 Your chat partner is now upgraded to Premium Tier!");
-    }, 2000);
+    }
   };
 
   // ==========================================
@@ -1071,6 +1203,23 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
   };
 
   const confirmExit = () => {
+    if (isHost) {
+      try {
+        PeerService.sendMessage({
+          id: `ctrl_${Date.now()}`,
+          senderId: session.userId,
+          content: 'host_exit',
+          timestamp: Date.now(),
+          type: 'host_exit'
+        });
+      } catch (err) {
+        console.error('Failed to broadcast host_exit signal:', err);
+      }
+      
+      // Host permanently deletes their copy of the messages
+      localStorage.removeItem(`chat_messages_${session.sessionId}`);
+    }
+
     PeerService.destroy();
     cleanupSession();
     onExit();
@@ -1148,7 +1297,15 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
           </p>
           <div className="flex space-x-3">
             <button
-              onClick={() => { PeerService.destroy(); cleanupSession(); onExit(); }}
+              onClick={() => {
+                localStorage.removeItem('active_chat_session');
+                localStorage.removeItem('active_chat_is_host');
+                localStorage.removeItem('active_chat_is_group');
+                localStorage.removeItem(`chat_messages_${session.sessionId}`);
+                PeerService.destroy();
+                cleanupSession();
+                onExit();
+              }}
               className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white py-3 rounded-xl font-semibold"
             >
               Exit
@@ -1198,43 +1355,74 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
     );
   }
 
+  const remoteMember = groupMembers.find(m => m.id !== session.userId);
+  const partnerName = isGroup 
+    ? groupSettings.name 
+    : (remoteMember?.nickname || (isHost ? 'Guest Partner' : 'Session Host'));
+  const partnerInitials = isGroup 
+    ? getInitials(groupSettings.name) 
+    : getInitials(remoteMember?.nickname || (isHost ? 'Guest Partner' : 'Session Host'));
+  const partnerStatus = isConnecting 
+    ? 'connecting...' 
+    : isConnected 
+    ? (isGroup ? `${groupMembers.filter(m => m.isOnline).length} online` : 'online') 
+    : 'offline';
+  const partnerColor = isGroup ? 'bg-emerald-650' : getAvatarColor(partnerName);
+
   return (
     <>
     <div className={`fixed inset-0 h-[100dvh] w-full overflow-hidden flex flex-col ${wallpaperStyles[chatWallpaper] || wallpaperStyles.default}`}>
       {/* WhatsApp Style Header */}
-      <div className="bg-[#f0f2f5] dark:bg-[#202c33] border-b border-gray-200 dark:border-zinc-700/80 sticky top-0 z-30 transition-colors">
+      <div className="bg-[#f0f2f5] dark:bg-[#202c33] border-b border-gray-250/20 dark:border-zinc-700/80 sticky top-0 z-30 transition-colors">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-2">
           
-          <div className="flex items-center space-x-3">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-lg font-bold text-gray-800 dark:text-white">
-                  {isGroup ? 'Group Chat' : 'Secure Chat'}
-                </h1>
-                {nickname && (
-                  <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded text-xs font-semibold">
-                    {nickname}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                {isConnecting 
-                  ? 'Connecting...' 
-                  : isConnected 
-                  ? `🔒 E2E Encrypted • ⏱️ ${formatted} • 🔥 ${streak} day streak • 💬 ${totalMessages} msgs`
-                  : 'Disconnected'}
+          <div className="flex items-center space-x-2.5">
+            {/* Back Arrow */}
+            <button
+              onClick={handleExit}
+              className="p-2 hover:bg-gray-200/50 dark:hover:bg-gray-750/50 rounded-full text-gray-700 dark:text-gray-300 cursor-pointer active:scale-95 transition-all flex items-center justify-center flex-shrink-0"
+              title="Exit Session"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            {/* Initials Avatar */}
+            <div className={`w-10 h-10 rounded-full ${partnerColor} text-white flex items-center justify-center font-bold text-sm shadow-inner uppercase flex-shrink-0 select-none`}>
+              {partnerInitials}
+            </div>
+
+            {/* User Title & Status */}
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-extrabold text-gray-800 dark:text-white truncate max-w-[120px] sm:max-w-[200px]">
+                {partnerName}
+              </h1>
+              <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
+                {partnerStatus}
               </p>
             </div>
           </div>
 
           {/* Controls / Personalization */}
-          <div className="flex items-center space-x-2 relative">
-            
+          <div className="flex items-center space-x-1 relative">
+            {/* Quick Audio Call (1-on-1 only) */}
+            {isConnected && !isGroup && (
+              <button
+                onClick={() => startCall('voice')}
+                className="p-2 hover:bg-[#25d366]/10 dark:hover:bg-[#25d366]/20 rounded-full text-gray-750 dark:text-gray-300 cursor-pointer transition-all active:scale-95 flex items-center justify-center flex-shrink-0"
+                title="Voice Call"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </button>
+            )}
+
             {/* 3-Dots Dropdown Trigger */}
             <button
               onClick={() => setShowMenuDropdown(!showMenuDropdown)}
-              className={`p-2 rounded-full text-gray-700 dark:text-gray-300 text-xl font-bold cursor-pointer transition-all active:scale-95 w-10 h-10 flex items-center justify-center ${showMenuDropdown ? 'bg-purple-500/10 dark:bg-purple-400/10 text-purple-600 dark:text-purple-400' : 'hover:bg-gray-200/50 dark:hover:bg-gray-750/50'}`}
+              className={`p-2 rounded-full text-gray-750 dark:text-gray-300 text-xl font-bold cursor-pointer transition-all active:scale-95 w-9 h-9 flex items-center justify-center ${showMenuDropdown ? 'bg-purple-500/10 dark:bg-purple-400/10 text-purple-600 dark:text-purple-400' : 'hover:bg-gray-250/50 dark:hover:bg-gray-750/50'}`}
               title="Menu Options"
             >
               ⋮
@@ -1245,17 +1433,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowMenuDropdown(false)} />
                 <div className="absolute right-2 top-12 w-56 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl shadow-2xl rounded-2xl p-2 z-50 border border-gray-150/40 dark:border-zinc-800/80 animate-scale-in">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold mb-1 px-3 uppercase tracking-wider">Chat Options</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold mb-1.5 px-3 uppercase tracking-wider">Chat Options</p>
                   
                   {isConnected && !isGroup && (
                     <>
-                      <button
-                        onClick={() => { startCall('voice'); setShowMenuDropdown(false); }}
-                        className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center space-x-2.5 cursor-pointer"
-                      >
-                        <span className="text-base">📞</span>
-                        <span>Voice Call</span>
-                      </button>
                       <button
                         onClick={() => { startCall('video'); setShowMenuDropdown(false); }}
                         className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 transition-colors flex items-center space-x-2.5 cursor-pointer"
@@ -1354,7 +1535,29 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
                     <span>Chat Wallpaper</span>
                   </button>
 
-                  <div className="border-t border-gray-150/40 dark:border-zinc-800/60 my-1"></div>
+                  <div className="border-t border-gray-150/40 dark:border-zinc-800/60 my-1.5"></div>
+
+                  {/* Self-Destruct Timer */}
+                  <div className="px-3 py-2 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 flex flex-col space-y-1 select-none">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold uppercase tracking-wider">🔥 Auto-Delete Timer</span>
+                    <select
+                      value={selfDestructSec}
+                      onChange={(e) => {
+                        setSelfDestructSec(parseInt(e.target.value));
+                        setShowMenuDropdown(false);
+                      }}
+                      className="w-full mt-1 bg-gray-50 dark:bg-zinc-800 text-gray-700 dark:text-gray-200 border border-gray-250/40 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs focus:ring-0 focus:outline-hidden cursor-pointer"
+                    >
+                      <option value="0">⏳ Timer: Off</option>
+                      <option value="5">🔥 5 Seconds</option>
+                      <option value="10">🔥 10 Seconds</option>
+                      <option value="30">🔥 30 Seconds</option>
+                      <option value="60">🔥 1 Minute</option>
+                      <option value="300">🔥 5 Minutes</option>
+                    </select>
+                  </div>
+
+                  <div className="border-t border-gray-150/40 dark:border-zinc-800/60 my-1.5"></div>
 
                   {/* Report */}
                   <button
@@ -1368,7 +1571,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
                   {/* Exit */}
                   <button
                     onClick={() => { handleExit(); setShowMenuDropdown(false); }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors flex items-center space-x-2.5 cursor-pointer"
+                    className="w-full text-left px-3 py-2 rounded-xl text-sm font-bold text-red-650 dark:text-red-400 hover:bg-red-550/10 dark:hover:bg-red-950/20 transition-colors flex items-center space-x-2.5 cursor-pointer"
                   >
                     <span className="text-base">🚪</span>
                     <span>Exit Session</span>
@@ -1488,14 +1691,54 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
         )}
 
         {!isConnecting && isConnected && messages.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl">
-              💬
+          <div className="flex-1 flex items-center justify-center py-12 select-none">
+            <div className="bg-[#182533]/85 dark:bg-[#182533]/90 backdrop-blur-xl border border-[#2b394a] rounded-2xl w-full max-w-[280px] p-6 text-center shadow-2xl animate-scale-in">
+              <h3 className="font-extrabold text-white text-[15px] sm:text-base tracking-wide Outfit">
+                No messages here yet...
+              </h3>
+              <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                Send a message or tap the greeting below.
+              </p>
+              
+              {/* Cute greeting SVG bird */}
+              <svg className="w-28 h-28 mx-auto my-5 animate-bounce cursor-pointer active:scale-95 transition-transform" viewBox="0 0 100 100" style={{ animationDuration: '3s' }} onClick={() => {
+                sendPayload({ content: '👋 Hello there!', type: 'text' });
+              }}>
+                {/* Body */}
+                <ellipse cx="50" cy="55" rx="25" ry="20" fill="#aee85b" />
+                {/* Belly */}
+                <ellipse cx="50" cy="58" rx="16" ry="12" fill="#fff" opacity="0.9" />
+                {/* Head */}
+                <circle cx="50" cy="35" r="18" fill="#aee85b" />
+                {/* Hair tuft */}
+                <path d="M46 18 C46 10, 38 12, 38 12 C38 12, 45 15, 48 18" fill="#4caf50" />
+                <path d="M52 18 C52 8, 58 10, 58 10 C58 10, 53 14, 51 18" fill="#4caf50" />
+                {/* Cheeks */}
+                <circle cx="39" cy="39" r="3" fill="#ff5722" opacity="0.6" />
+                <circle cx="61" cy="39" r="3" fill="#ff5722" opacity="0.6" />
+                {/* Big happy eyes */}
+                <circle cx="42" cy="34" r="5" fill="#1e293b" />
+                <circle cx="41" cy="33" r="1.5" fill="#fff" />
+                <circle cx="58" cy="34" r="5" fill="#1e293b" />
+                <circle cx="57" cy="33" r="1.5" fill="#fff" />
+                {/* Orange Beak */}
+                <path d="M47 38 L53 38 L50 48 Z" fill="#ff9800" stroke="#f57c00" strokeWidth="1" strokeLinejoin="round" />
+                {/* Wings */}
+                <path d="M26 52 C18 52, 16 62, 24 64 C26 62, 27 56, 26 52" fill="#4caf50" />
+                <path d="M74 52 C82 52, 84 62, 76 64 C74 62, 73 56, 74 52" fill="#4caf50" />
+                {/* Little Orange Feet */}
+                <path d="M43 74 L41 80" stroke="#ff9800" strokeWidth="3" strokeLinecap="round" />
+                <path d="M43 74 L46 80" stroke="#ff9800" strokeWidth="3" strokeLinecap="round" />
+                <path d="M57 74 L54 80" stroke="#ff9800" strokeWidth="3" strokeLinecap="round" />
+                <path d="M57 74 L59 80" stroke="#ff9800" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+
+              <span className="inline-block bg-white/10 dark:bg-white/5 text-gray-300 text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 shadow-xs cursor-pointer hover:bg-white/15" onClick={() => {
+                sendPayload({ content: '👋 Hello!', type: 'text' });
+              }}>
+                👋 Say Hello
+              </span>
             </div>
-            <h3 className="font-semibold text-gray-800 dark:text-white">Connected Securely!</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Send a message, voice note, or sticker. Everything is end-to-end encrypted.
-            </p>
           </div>
         )}
 
@@ -1828,7 +2071,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
       )}
 
       {/* Input / Compose Area */}
-      <div className="bg-[#f0f2f5] dark:bg-[#202c33] border-t border-gray-200 dark:border-zinc-700/80 p-3 sticky bottom-0 z-30 transition-colors">
+      <div className="bg-[#f0f2f5] dark:bg-[#182533] border-t border-gray-250/20 dark:border-zinc-800/80 p-3.5 sticky bottom-0 z-30 transition-colors">
         <div className="max-w-6xl mx-auto">
           
           {/* Hidden Inputs — multiple file uploads supported */}
@@ -1849,19 +2092,19 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
             capture="environment"
           />
 
-          {/* WhatsApp Style Compose Bar */}
-          <div className="flex items-center space-x-2 w-full">
+          {/* TG Style Responsive Compose Bar */}
+          <div className="flex items-center space-x-2 w-full relative">
             
-            {/* Pill Capsule Wrapper: Smiley, Input, Self-Destruct, Attachments, Camera */}
-            <div className="flex-1 bg-white dark:bg-zinc-800 rounded-full border border-gray-200 dark:border-zinc-700/80 flex items-center px-1.5 py-1 sm:py-1.5 shadow-xs transition-colors">
+            {/* Pill Capsule Wrapper: Smiley, Input, Self-Destruct indicator, Attachments, Camera */}
+            <div className="flex-1 bg-white dark:bg-[#202c33] rounded-full border border-gray-250/30 dark:border-zinc-700/50 flex items-center px-3 py-1.5 shadow-xs transition-colors">
               {/* Emoji/Sticker Trigger */}
               <button
                 onClick={() => setShowStickerPicker(true)}
                 disabled={!isConnected}
-                className="p-1.5 text-gray-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 disabled:opacity-40 text-xl flex-shrink-0 cursor-pointer transition-colors"
+                className="p-1 text-gray-500 dark:text-zinc-400 hover:text-blue-500 disabled:opacity-40 text-xl flex-shrink-0 cursor-pointer transition-colors"
                 title="Stickers & GIFs"
               >
-                😀
+                😊
               </button>
               
               {/* Message Input Box */}
@@ -1872,41 +2115,38 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') handleSendTextMessage();
                 }}
-                placeholder={isConnected ? t('chat.placeholder') + " (*bold*, _italic_, `code`)" : "Waiting for peer..."}
+                placeholder={isConnected ? t('chat.placeholder') + " (*bold*, _italic_)" : "Waiting for peer..."}
                 disabled={!isConnected}
-                className="flex-1 min-w-0 bg-transparent border-none outline-hidden focus:ring-0 px-2 text-[14px] sm:text-[15px] text-gray-800 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500"
+                className="flex-1 min-w-0 bg-transparent border-none outline-hidden focus:ring-0 px-2 text-[14px] sm:text-[15px] text-gray-800 dark:text-zinc-100 placeholder-gray-455 dark:placeholder-zinc-550"
               />
-              
-              {/* Self-Destruct Config Select */}
-              <select
-                id="self-destruct-select"
-                defaultValue="0"
-                className="text-[10px] sm:text-xs bg-gray-50 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300 rounded-full px-2 py-1 border-none focus:ring-0 focus:outline-hidden mr-1 cursor-pointer transition-colors"
-                title="Auto-delete Timer"
-              >
-                <option value="0">⏳ Off</option>
-                <option value="5">🔥 5s</option>
-                <option value="10">🔥 10s</option>
-                <option value="30">🔥 30s</option>
-                <option value="60">🔥 1m</option>
-                <option value="300">🔥 5m</option>
-              </select>
+
+              {/* Micro Timer Display (if self-destruct is active in 3dots menu) */}
+              {selfDestructSec > 0 && (
+                <span 
+                  onClick={() => setShowMenuDropdown(true)}
+                  className="bg-red-500/10 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-500/20 mr-1.5 animate-pulse cursor-pointer flex items-center space-x-0.5 flex-shrink-0"
+                  title="Self-Delete Timer Active - Click to change"
+                >
+                  <span>🔥</span>
+                  <span>{selfDestructSec}s</span>
+                </span>
+              )}
               
               {/* Attach File (📎) */}
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!isConnected}
-                className="p-1.5 text-gray-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 disabled:opacity-40 flex-shrink-0 cursor-pointer transition-colors"
+                className="p-1 text-gray-500 dark:text-zinc-400 hover:text-blue-500 disabled:opacity-40 flex-shrink-0 cursor-pointer transition-colors"
                 title="Attach File"
               >
                 📎
               </button>
               
-              {/* Camera (📷) */}
+              {/* Camera (📷) - only visible on sm/wider screens to prevent mobile overflow */}
               <button
                 onClick={() => cameraInputRef.current?.click()}
                 disabled={!isConnected}
-                className="p-1.5 text-gray-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 disabled:opacity-40 flex-shrink-0 cursor-pointer transition-colors"
+                className="hidden sm:block p-1 text-gray-500 dark:text-zinc-400 hover:text-blue-500 disabled:opacity-40 flex-shrink-0 cursor-pointer transition-colors ml-1"
                 title="Take Photo"
               >
                 📷
@@ -1917,24 +2157,22 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
                 <button
                   onClick={() => setShowPollCreator(true)}
                   disabled={!isConnected}
-                  className="p-1.5 text-gray-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 disabled:opacity-40 flex-shrink-0 cursor-pointer transition-colors text-lg"
+                  className="hidden sm:block p-1 text-gray-500 dark:text-zinc-400 hover:text-blue-500 disabled:opacity-40 flex-shrink-0 cursor-pointer transition-colors text-lg ml-1"
                   title="Create Poll"
                 >
                   📊
                 </button>
               )}
-
-
             </div>
 
-            {/* Dynamic Green Circle Button: Microphone (when empty) / Send (when typing) */}
+            {/* Dynamic Blue Circle Button: Microphone (when empty) / Send (when typing) */}
             <button
               onClick={inputMessage.trim() ? handleSendTextMessage : handleVoiceRecord}
               disabled={!isConnected}
               className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full text-white flex items-center justify-center flex-shrink-0 active:scale-90 transition-all shadow-md cursor-pointer disabled:opacity-50 ${
                 isRecordingVoice 
                   ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                  : 'bg-[#00a884] hover:bg-[#008f72]'
+                  : 'bg-blue-500 hover:bg-blue-600'
               }`}
               title={inputMessage.trim() ? "Send Message" : (isRecordingVoice ? "Stop Recording" : "Record Voice Message")}
             >
@@ -2112,28 +2350,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
                   <h4 className="font-bold text-gray-800 dark:text-zinc-100 text-sm">💎 1-Month Premium Pass</h4>
                   <p className="text-[11px] text-zinc-500 mt-0.5">50MB uploads • 24h sessions • No ads</p>
                 </div>
-                <span className="font-extrabold text-purple-600 dark:text-purple-400">$4.99</span>
-              </div>
-              <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
-                <div>
-                  <h4 className="font-bold text-gray-800 dark:text-zinc-100 text-sm">💎 1-Year Premium Pass</h4>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">Best Value! Massive full-year access</p>
-                </div>
-                <span className="font-extrabold text-purple-600 dark:text-purple-400">$39.99</span>
+                <span className="font-extrabold text-purple-600 dark:text-purple-400">₹49</span>
               </div>
             </div>
 
-            {/* Simulated Checkout Form */}
-            <div className="space-y-3 pt-2">
-              <div>
-                <label className="block text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider mb-1">Dummy Card Details</label>
-                <input
-                  type="text"
-                  disabled
-                  value="💳  4242 •••• •••• 4242"
-                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-zinc-500 text-sm"
-                />
-              </div>
+            <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 rounded-xl p-3.5 text-xs text-purple-700 dark:text-purple-300">
+              ⚡ Safe E2E upgrade: The recipient upgrades instantly once the secure checkout completes.
             </div>
           </div>
 
@@ -2152,7 +2374,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ session, isHost, isGroup = false, o
               {isGiftProcessing ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                <span>Send Gift 💎</span>
+                <span>Pay ₹49 💎</span>
               )}
             </button>
           </div>
